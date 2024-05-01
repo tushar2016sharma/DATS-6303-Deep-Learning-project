@@ -5,15 +5,14 @@ Importing Required Modules
 
 """
 
-
 import streamlit as st
-from melodygenerator import MelodyGenerator
+from melodygenerator_gru import MelodyGenerator
 import torch
 import os
 from music21 import environment, stream, note, pitch, converter, tempo
 import subprocess
 
-
+import json
 
 
 SEQUENCE_LENGTH = 64
@@ -78,6 +77,7 @@ def apply_dark_theme():
     st.markdown(dark_theme_css, unsafe_allow_html=True)
 
 apply_dark_theme()
+
 # Set device for model computations
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -85,9 +85,15 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 env = environment.Environment()
 env['musescoreDirectPNGPath'] = '/usr/bin/musescore'
 
-# Define global settings
-input_size, hidden_size, output_size = 38, 128, 38# Adjust this to your actual sound font path
+# Define global setting
+hidden_size = 128# Adjust this to your actual sound font path
+with open('mapping.json', 'r') as file:
+    data = json.load(file)
+    size = len(data)  # If the JSON is an object, this returns the number of top-level keys.
 
+print("Number of top-level keys:", size)
+output_size = size
+input_size = size
 # Set title
 
 
@@ -155,7 +161,7 @@ def convert_midi_to_wav(midi_file_path, output_file_path, sound_font):
 
 
 # Define path to your sound font file
-sound_font_path = '/home/ubuntu/generating-melodies-with-rnn-lstm/9 - Converting Generated Melodies to MIDI//soundfont.sf2'
+sound_font_path = '/home/ubuntu/generating-melodies-with-rnn-lstm/GRU/soundfont.sf2'
 
 # Function to delete files if they exist
 env = environment.Environment()

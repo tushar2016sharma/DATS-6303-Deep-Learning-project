@@ -30,20 +30,35 @@ class MelodyGenerator:
             self.model = MusicModel3(input_size, hidden_size*2,output_size)
             model_path = "model_vae.pth"
         else:
-            raise ValueError(f"Invalid model type {model_type}. Choose 'model1' or 'model2'.")
+            raise ValueError(f"Invalid model type {model_type}. Choose 'model1','model2'. or 'model3'.")
 
         self.model.to(self.device)  # Move model to the appropriate device
         print(f'Using device: {self.device}')
-
-        try:
-            # Ensure the model is loaded onto the correct device
-            self.model.load_state_dict(torch.load(model_path, map_location=self.device))
-            self.model.eval()  # Set the model to evaluation mode
-            self._mappings_inverse = {v: k for k, v in self._mappings.items()}
-        except FileNotFoundError as e:
-            print(f"Failed to load the model from {model_path}. Please check the path and try again.")
-            raise e
-
+        if self.model_type == 'model1':
+            try:
+                    # Ensure the model is loaded onto the correct device
+                    self.model.load_state_dict(torch.load(model_path, map_location=self.device))
+                    self.model.eval()  # Set the model to evaluation mode
+            except FileNotFoundError as e:
+                    print(f"Failed to load the model from {model_path}. Please check the path and try again.")
+                    raise e
+        elif  self.model_type == 'model2':
+            try:
+                    # Ensure the model is loaded onto the correct device
+                    self.model.load_state_dict(torch.load(model_path, map_location=self.device))
+                    self.model.eval()  # Set the model to evaluation mode
+            except FileNotFoundError as e:
+                    print(f"Failed to load the model from {model_path}. Please check the path and try again.")
+                    raise e
+        elif self.model_type == 'model3':
+            try:
+                    # Ensure the model is loaded onto the correct device
+                    self.model.load_state_dict(torch.load(model_path, map_location=self.device))
+                    self.model.eval()  # Set the model to evaluation mode
+                    self._mappings_inverse = {v: k for k, v in self._mappings.items()}
+            except FileNotFoundError as e:
+                    print(f"Failed to load the model from {model_path}. Please check the path and try again.")
+                    raise e
         try:
             with open(MAPPING_PATH, "r") as fp:
                 self._mappings = json.load(fp)
@@ -69,7 +84,6 @@ class MelodyGenerator:
                 with torch.no_grad():
                     output = self.model(onehot_seed).squeeze(0)
                     probabilities = F.softmax(output.div(temperature), dim=0).cpu().numpy()
-
                 output_int = self._sample_with_temperature(probabilities, temperature)
                 seed.append(output_int)
                 output_symbol = next((k for k, v in self._mappings.items() if v == output_int), None)
@@ -80,13 +94,13 @@ class MelodyGenerator:
                     break
 
                 melody.append(output_symbol)
+            print(type(melody))
             print(f"Final generated melody: {melody}")
             return melody
         else:
             seed = seed.split()
-            melody = seed
             seed = [self._mappings.get(symbol, self._mappings["_"]) for symbol in seed]
-
+            melody1=seed
             # Initialize melody indices with valid boundary checks
             melody_indices = [idx if idx < self.input_size else self._mappings["_"] for idx in seed]
 
@@ -111,8 +125,8 @@ class MelodyGenerator:
                 output_symbol = self._mappings_inverse.get(output_int, "_")
                 if output_symbol == "/":
                     break
-
-            return ' '.join(self._mappings_inverse.get(idx, "_") for idx in melody_indices)
+            melody1 = ' '.join(self._mappings_inverse.get(idx, "_") for idx in melody_indices)
+            return melody1
 
     def _sample_with_temperature(self, probabilities, temperature=1.0):
         """Sample an index from a probability array, adjusted by temperature, based on the model type."""
@@ -136,7 +150,7 @@ class MelodyGenerator:
 
         if self.model_type in ['model1', 'model2']:
             # Logic for model1 and model2
-            for symbol in melody.split():
+            for symbol in melody:
                 if symbol.isdigit():
                     pitch = m21.pitch.Pitch()
                     pitch.midi = int(symbol)
@@ -145,6 +159,7 @@ class MelodyGenerator:
                 elif symbol == "r":
                     rest = m21.note.Rest(quarterLength=step_duration)
                     stream.append(rest)
+            stream.write(format, file_name)
         else:
             # Logic for other model types
             start_symbol = None
@@ -164,7 +179,7 @@ class MelodyGenerator:
                 else:
                     step_counter += 1
 
-        stream.write(format, file_name)
+            stream.write(format, file_name)
         print(f"Melody saved to {file_name}")
 
 

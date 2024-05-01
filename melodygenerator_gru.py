@@ -3,16 +3,29 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import music21 as m21
-from preprocess import SEQUENCE_LENGTH, MAPPING_PATH
-from train_gru import MusicModel
+from preprocess_gru import SEQUENCE_LENGTH, MAPPING_PATH
+from train_gru import MusicModel,MusicModel2, MusicModel3
 
 
 class MelodyGenerator:
     """Class to generate melodies using a pre-trained model based on LSTM or GRU."""
 
-    def __init__(self, input_size, hidden_size, output_size, num_layers=20, model_path="model.pth"):
+    def __init__(self, input_size, hidden_size, output_size, model_type):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = MusicModel(input_size, hidden_size, output_size)
+
+        # Conditionally initialize the correct model
+        if model_type == 'model1':
+            self.model = MusicModel(input_size, hidden_size, output_size)
+            model_path = "model.pth"
+        elif model_type == 'model2':
+            self.model = MusicModel2(input_size, hidden_size, output_size)
+            model_path = "model_lstm.pth"
+        elif model_type == 'model3':
+            self.model = MusicModel3(input_size=input_size,hidden_size= hidden_size*2, output_size=output_size)
+            model_path = "model_vae.pth"
+        else:
+            raise ValueError(f"Invalid model type {model_type}. Choose 'model1' or 'model2'.")
+
         self.model.to(self.device)  # Move model to the appropriate device
         print(f'Using device: {self.device}')
 
@@ -108,7 +121,7 @@ if __name__ == "__main__":
     OUTPUT_UNITS = size
     INPUT_UNITS = size
 
-    mg = MelodyGenerator(INPUT_UNITS, hidden_size, OUTPUT_UNITS)
+    mg = MelodyGenerator(INPUT_UNITS, hidden_size, OUTPUT_UNITS,model_type='model3')
     seed = "67 _ 67 _ 67 _ _ 65 64 _ 64 _ 64 _ _"
     melody = mg.generate_melody(seed, 500, SEQUENCE_LENGTH, 0.3)
     print("Generated Melody:", melody)

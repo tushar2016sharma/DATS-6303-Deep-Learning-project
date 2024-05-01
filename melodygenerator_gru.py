@@ -10,50 +10,58 @@ from train_gru import MusicModel
 class MelodyGenerator:
     """Class to generate melodies using a pre-trained model based on LSTM or GRU."""
 
-    def __init__(self, input_size, hidden_size, output_size,model_path="model.pth"):
-        """Initialize the model and load the pre-trained weights."""
+    def __init__(self, input_size, hidden_size, output_size, num_layers=20, model_path="model.pth"):
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = MusicModel(input_size, hidden_size, output_size)
+        self.model.to(self.device)  # Move model to the appropriate device
+        print(f'Using device: {self.device}')
+
         try:
-            self.model.load_state_dict(torch.load(model_path))
+            # Ensure the model is loaded onto the correct device
+            self.model.load_state_dict(torch.load(model_path, map_location=self.device))
             self.model.eval()  # Set the model to evaluation mode
-        except FileNotFoundError:
+        except FileNotFoundError as e:
             print(f"Failed to load the model from {model_path}. Please check the path and try again.")
-            raise
+            raise e
 
         try:
             with open(MAPPING_PATH, "r") as fp:
                 self._mappings = json.load(fp)
-        except FileNotFoundError:
+        except FileNotFoundError as e:
             print(f"Failed to load mappings from {MAPPING_PATH}. Please check the path and try again.")
-            raise
+            raise e
 
         self._start_symbols = ["/"] * SEQUENCE_LENGTH
 
     def generate_melody(self, seed, num_steps, max_sequence_length, temperature=1.0):
-        """Generate a melody from a seed sequence."""
+        print(f"Seed before processing: {seed}")
         seed = seed.split()
         melody = seed[:]
         seed = self._start_symbols + seed
-        seed = [self._mappings[symbol] for symbol in seed]
+        seed = [self._mappings.get(symbol, "?") for symbol in seed]
+        print(f"Processed seed: {seed}")
 
         for _ in range(num_steps):
             seed = seed[-max_sequence_length:]
-            onehot_seed = F.one_hot(torch.tensor(seed), num_classes=len(self._mappings)).float()
-            onehot_seed = onehot_seed.unsqueeze(0)
-
+            seed_tensor = torch.tensor(seed, device=self.device).long()
+            onehot_seed = F.one_hot(seed_tensor, num_classes=len(self._mappings)).float()
+            onehot_seed = onehot_seed.unsqueeze(0).to(self.device)
             with torch.no_grad():
                 output = self.model(onehot_seed).squeeze(0)
-                probabilities = torch.softmax(output, dim=0).numpy()
+                probabilities = F.softmax(output.div(temperature), dim=0).cpu().numpy()
 
             output_int = self._sample_with_temperature(probabilities, temperature)
             seed.append(output_int)
-            output_symbol = [k for k, v in self._mappings.items() if v == output_int][0]
+            output_symbol = next((k for k, v in self._mappings.items() if v == output_int), None)
+
+            print(f"Generated symbol: {output_symbol} from probability distribution")
 
             if output_symbol == "/":
                 break
 
             melody.append(output_symbol)
 
+        print(f"Final generated melody: {melody}")
         return melody
 
     def _sample_with_temperature(self, probabilities, temperature=1.0):
@@ -64,7 +72,7 @@ class MelodyGenerator:
         index = np.random.choice(choices, p=probabilities)
         return index
 
-    def save_melody(self, melody, step_duration=0.25, format="midi", file_name="melody.mid"):
+    def save_melody(self, melody, step_duration=0.25, format="midi", file_name="generated_melody.mid"):
         """Save the generated melody to a MIDI file."""
         stream = m21.stream.Stream()
 
@@ -90,10 +98,17 @@ class MelodyGenerator:
 
 
 if __name__ == "__main__":
-    input_size = 38  # Example size, set appropriately
+
     hidden_size = 128  # Example size, set appropriately
-    output_size = 38  # Example size, set appropriately
-    mg = MelodyGenerator(input_size, hidden_size, output_size)
+    with open('mapping.json', 'r') as file:
+        data = json.load(file)
+        size = len(data)  # If the JSON is an object, this returns the number of top-level keys.
+
+    print("Number of top-level keys:", size)
+    OUTPUT_UNITS = size
+    INPUT_UNITS = size
+
+    mg = MelodyGenerator(INPUT_UNITS, hidden_size, OUTPUT_UNITS)
     seed = "67 _ 67 _ 67 _ _ 65 64 _ 64 _ 64 _ _"
     melody = mg.generate_melody(seed, 500, SEQUENCE_LENGTH, 0.3)
     print("Generated Melody:", melody)

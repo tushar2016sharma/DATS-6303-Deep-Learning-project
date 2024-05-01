@@ -11,7 +11,7 @@ import json
 NUM_UNITS = 128
 BATCH_SIZE = 100
 LOSS = nn.CrossEntropyLoss()
-LEARNING_RATE = 0.001
+LEARNING_RATE = 0.0001
 EPOCHS = 20
 # output_size = 18
 SAVE_MODEL_PATH = "model.pth"
@@ -59,7 +59,7 @@ class MultiHeadAttention(nn.Module):
         return out
 
 class MusicModel(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, num_layers=5):
+    def __init__(self, input_size, hidden_size, output_size, num_layers=8):
         super(MusicModel, self).__init__()
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers=num_layers,
                             batch_first=True, bidirectional=True, dropout=0.5)  # Increased dropout
@@ -88,7 +88,7 @@ def train_model():
     # Set up device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Training on {device}")
-
+    best_train_loss = float('inf')
     # Model setup
     model = MusicModel(OUTPUT_UNITS, NUM_UNITS, OUTPUT_UNITS).to(device)
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
@@ -129,9 +129,14 @@ def train_model():
 
         print(f"Epoch {epoch + 1}/{EPOCHS}, Loss: {avg_loss:.4f}, Accuracy: {accuracy:.2f}%")
 
+        if avg_loss < best_train_loss:
+            best_train_loss = avg_loss
+            torch.save(model.state_dict(), 'best_model.pth')  # Save the best model based on training loss
+            print(f"Saved best model with training loss: {avg_loss:.4f}")
+
     # Save the model
-    torch.save(model.state_dict(), SAVE_MODEL_PATH)
-    print("Model saved to", SAVE_MODEL_PATH)
+    # torch.save(model.state_dict(), SAVE_MODEL_PATH)
+    # print("Model saved to", SAVE_MODEL_PATH)
 
 if __name__ == "__main__":
     train_model()

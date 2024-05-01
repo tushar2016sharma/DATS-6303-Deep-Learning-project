@@ -10,7 +10,7 @@ from train_LSTM_MultiHeadAttention import MusicModel
 class MelodyGenerator:
     """A class that wraps the LSTM model and offers utilities to generate melodies."""
 
-    def __init__(self, input_size, hidden_size, output_size, model_path="model.pth"):
+    def __init__(self, input_size, hidden_size, output_size, model_path="best_model.pth"):
         """Constructor that initializes PyTorch model"""
         self.model = MusicModel(input_size, hidden_size, output_size)
         self.model.load_state_dict(torch.load(model_path))
@@ -105,7 +105,7 @@ if __name__ == "__main__":
     hidden_size = 128  # Example size, set appropriately
     output_size = size  # Example size, set appropriately
     mg = MelodyGenerator(input_size, hidden_size, output_size)
-    seed = "70 _ 74 _ 77 _ 70 _ _ 77 74 _ 77 _"
+    seed = "60 _ 64 _ 67 _ 60 _ _ 67 64 _ 67 _"
 
     melody = mg.generate_melody(seed, 500, SEQUENCE_LENGTH, 0.3)
     print(melody)

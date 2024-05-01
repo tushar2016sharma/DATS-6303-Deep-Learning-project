@@ -78,6 +78,7 @@ def apply_dark_theme():
 
 apply_dark_theme()
 
+
 # Set device for model computations
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -205,29 +206,33 @@ def save_score_image_with_xvfb(score, file_name="score.png"):
     delete_file_if_exists(temp_musicxml)
 
 
-model_path_lstm = "model.pth"
-model_path_gru = "model.pth"
-model_path_lstm_attention = "model.pth"
-
 
 
 # Define function to handle melody generation
 def handle_melody_generation(seed_text, model_choice):
     if seed_text:
-        if model_choice == 'LSTM':
-            model_path = model_path_lstm
-        elif model_choice == 'GRU':
-            model_path = model_path_gru
-        else:
-            model_path = model_path_lstm_attention
+        if model_choice == 'GRU':
+            model_type = 'model1'
+        elif model_choice == 'LSTM_attention':
+            model_type = 'model2'
+        elif model_choice == 'Vae':
+           model_type= 'model3'
 
-        melody_generator = MelodyGenerator(input_size, hidden_size, output_size, model_path=model_path)
+        melody_generator = MelodyGenerator(input_size, hidden_size, output_size, model_type=model_type)
         melody_generator.model.to(device)
         melody = melody_generator.generate_melody(seed_text, 500, SEQUENCE_LENGTH, 0.3)
-        generated_melody_str = ' '.join([str(m) for m in melody])
-        st.subheader("Melody")
+        print("jiejifjeif",melody)
+        st.subheader("Generated Melody")
+        if model_type == 'model1' or model_type == 'model2':
+            generated_melody_str = ' '.join([str(m) for m in melody])
+            st.text_area("", generated_melody_str, height=150)
+            melody_generator.save_melody(melody, file_name="generated_melody.mid")
+        else:
+            melody.replace('/', '')
+            st.text_area("", melody, height=150)
+
         # Save and display melody
-        melody_generator.save_melody(melody, file_name="generated_melody.mid")
+
         convert_midi_to_wav("generated_melody.mid", "generated_melody.wav", sound_font_path)
 
         if os.path.exists("generated_melody.wav"):
@@ -237,14 +242,15 @@ def handle_melody_generation(seed_text, model_choice):
             st.error("Failed to convert MIDI to WAV.")
 
         # Display and download MIDI
-        st.subheader("Generated Melody")
-        st.text_area("",generated_melody_str, height=150)
+
         st.download_button("Download MIDI", data=open("generated_melody.mid", "rb").read(),
                            file_name="generated_melody.mid", mime="audio/midi")
 
         # Generate score image
-
-        score = text_to_score(generated_melody_str)
+        if model_type=='model1' or model_type=='model2':
+            score = text_to_score(generated_melody_str)
+        else:
+            score = text_to_score(melody)
         save_score_image_with_xvfb(score)
         st.subheader("Music Sheet")
         st.image("score-1.png", caption="Generated Sheet Music")
@@ -255,7 +261,7 @@ def handle_melody_generation(seed_text, model_choice):
 
 seed_text = st.text_input("Enter a seed melody (notes separated by spaces):",
                           value="67 _ 67 _ 67 _ _ 65 64 _ 64 _ 64 _ _")
-model_choice = st.radio("Choose the model type:", ('LSTM', 'GRU', 'LSTM_attention'),horizontal=True)
+model_choice = st.radio("Choose the model type:", ( 'GRU', 'LSTM_attention','Vae',),horizontal=True)
 
 
 if st.button('Generate Melody'):

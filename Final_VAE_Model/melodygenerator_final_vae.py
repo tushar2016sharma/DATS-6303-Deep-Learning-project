@@ -4,7 +4,7 @@ import torch
 import torch.nn.functional as F
 import music21 as m21
 from preprocess import SEQUENCE_LENGTH, MAPPING_PATH
-from train import VAE  
+from train_final_vae import VAE  
 
 class MelodyGenerator:
     def __init__(self, model_path="vae_model.pth"):

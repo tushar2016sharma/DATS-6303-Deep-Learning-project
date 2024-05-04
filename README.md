@@ -9,7 +9,7 @@ This repository contains the culmination of our team's efforts in developing fou
 
 # Repository Structure
 
-final_models/: Contains individual folders for each of the four models we developed. Each folder is named after the model it contains and includes all necessary files for that model.
+Code/: Contains individual folders for each of the four models we developed. Each folder is named after the model it contains and includes all necessary files for that model.
 streamlit_app/: Contains all files necessary to run our Streamlit application, which showcases the capabilities of our models in an interactive format.
 Individual Contributions
 
